@@ -447,7 +447,7 @@ exports.Formats = [
 				pokemon.addVolatile('cursedbodyinnate', pokemon);
 			}
 			if (name === 'galbia' || name === 'aurora') {
-				this.setWeather('sandstorm');
+				this.field.setWeather('sandstorm');
 			}
 			if (name === 'rodan') {
 				pokemon.addVolatile('gonnamakeyousweat', pokemon);
@@ -2237,7 +2237,7 @@ exports.Formats = [
 			}
 		}
 	},
-	{
+	/*{
 		name: "[Gen 7] Random Top Percentage",
 		mod: 'toppercentage',
 		desc: ["&lt; <a href=\"http://www.smogon.com/forums/threads/top-percentage.3564459/\">Top Percentage</a>"],
@@ -2265,7 +2265,7 @@ exports.Formats = [
 				this.win(target.side.foe);
 			}
 		},
-	},
+	},*/
 	{
 		name: "[Gen 7] Random Last Will",
 		desc: ["&bullet; Every Pokemon will use the move in their last moveslot before fainting in battle."],
@@ -2869,7 +2869,7 @@ exports.Formats = [
 		unbanlist: ["Landorus"],
 		mod: 'allterrain',
 		onBegin: function() {
-			this.setTerrain('allterrain');
+			this.field.setTerrain('allterrain');
 		},
 	},
 	{
@@ -3110,7 +3110,6 @@ exports.Formats = [
 		],
 		mod: 'gen7',
 		ruleset: ['[Gen 7] Ubers', 'Baton Pass Clause'],
-		banlist: ['Rule:nicknameclause'],
 		onValidateTeam: function (team) {
 			let nameTable = {};
 			for (let i = 0; i < team.length; i++) {
@@ -3124,16 +3123,16 @@ exports.Formats = [
 			}
 		},
 		validateSet: function (set, teamHas) {
-			let crossTemplate = Dex.getTemplate(set.name);
+			let crossTemplate = this.dex.getTemplate(set.name);
 			if (!crossTemplate.exists || crossTemplate.isNonstandard) return this.validateSet(set, teamHas);
-			let template = Dex.getTemplate(set.species);
+			let template = this.dex.getTemplate(set.species);
 			if (!template.exists) return [`The Pokemon ${set.species} does not exist.`];
 			if (!template.evos.length) return [`${template.species} cannot cross evolve because it doesn't evolve.`];
 			if (template.species === 'Sneasel') return [`Sneasel as a base Pokemon is banned.`];
 			let crossBans = {'shedinja': 1, 'solgaleo': 1, 'lunala': 1};
 			if (crossTemplate.id in crossBans) return [`${template.species} cannot cross evolve into ${crossTemplate.species} because it is banned.`];
 			if (crossTemplate.battleOnly || !crossTemplate.prevo) return [`${template.species} cannot cross evolve into ${crossTemplate.species} because it isn't an evolution.`];
-			let crossPrevoTemplate = Dex.getTemplate(crossTemplate.prevo);
+			let crossPrevoTemplate = this.dex.getTemplate(crossTemplate.prevo);
 			if (!crossPrevoTemplate.prevo !== !template.prevo) return [`${template.species} cannot cross into ${crossTemplate.species} because they are not consecutive evolutionary stages.`];
 
 			// Make sure no stat is too high/low to cross evolve to
@@ -3156,7 +3155,7 @@ exports.Formats = [
 
 			let mixedTemplate = Object.assign({}, template);
 			// Ability test
-			let ability = Dex.getAbility(set.ability);
+			let ability = this.dex.getAbility(set.ability);
 			let abilityBans = {'hugepower': 1, 'purepower': 1, 'shadowtag': 1};
 			if (!(ability.id in abilityBans)) mixedTemplate.abilities = crossTemplate.abilities;
 
@@ -3753,7 +3752,7 @@ exports.Formats = [
 			this.add("-message", "The Lockdown has commenced! Battlefield changes are now permanent!");
 			if (this.field.weatherData.duration) this.field.weatherData.duration = 0;
 			if (this.field.terrainData.duration) this.field.terrainData.duration = 0;
-			for (let i in this.pseudoWeather) {
+			for (let i in this.field.pseudoWeather) {
 				if (pseudo.includes(i)) {
 					this.field.pseudoWeather[i].duration = 0;
 				}
@@ -3859,9 +3858,30 @@ exports.Formats = [
 			`&bullet; <a href="http://www.smogon.com/forums/threads/3612727/">Nature Swap</a>`,
 		],
 
-		mod: 'natureswap',
 		ruleset: ['[Gen 7] OU'],
 		banlist: ['Blissey', 'Chansey', 'Cloyster', 'Hoopa-Unbound', 'Kyurem-Black', 'Stakataka'],
+		battle: {
+			natureModify(stats, set) {
+				let nature = this.getNature(set.nature);
+				let stat;
+				if (nature.plus) {
+					stat = nature.plus;
+					stats[stat] = Math.floor(stats[stat] * 1.1);
+				}
+				return stats;
+			},
+		},
+		onModifyTemplate(template, target, source, effect) {
+			if (!target) return; // Chat command
+			if (effect && ['imposter', 'transform'].includes(effect.id)) return;
+			let nature = this.getNature(target.set.nature);
+			if (!nature.plus) return template;
+			let newStats = Object.assign({}, template.baseStats);
+			let swap = newStats[nature.plus];
+			newStats[nature.plus] = newStats[nature.minus];
+			newStats[nature.minus] = swap;
+			return Object.assign({}, template, {baseStats: newStats});
+		},
 	},
 	{
 		name: "[Gen 7] No Status",
@@ -4552,7 +4572,7 @@ exports.Formats = [
 			if (pokemon.baseTemplate.actualSpecies) this.add('-end', pokemon, pokemon.baseTemplate.actualSpecies, '[silent]');
 		},
 	},
-		{
+	/*	{
 		name: "[Gen 7] [Random] Choonmons δ",
 		mod: 'choonmons',
 		team: 'randomSeasonalMelee',
@@ -4626,7 +4646,7 @@ exports.Formats = [
 		onModifyPokemon: function(pokemon) {
 			let name = toID(pokemon.name);
 		},
-	},
+	},*/
 	
 	/*{	THis needs a "randomCHOONMONSFactory function in mods/choonmons/scripts.js"
 		name: "[Gen 7] Choonmons Factory",
@@ -4661,9 +4681,26 @@ exports.Formats = [
         },
   	},
 	{
-		name: "[Gen 7] Crossover Chaos",
-		desc: ["&bullet; <a href=https://www.smogon.com/forums/threads/.3623813/>Crossover Chaos</a>",
+		name: "[Gen 7] Crossover Chaos v2",
+		desc: ["&bullet; <a href=https://www.smogon.com/forums/threads/crossover-chaos-v2.3636780/>Crossover Chaos</a>",
 		      ],
+		ruleset: ['Pokemon', 'Sleep Clause Mod', 'Species Clause', 'Moody Clause', 'Evasion Moves Clause', 'Endless Battle Clause', 'HP Percentage Mod', 'Cancel Mod', 'Team Preview', 'Swagger Clause', 'Baton Pass Clause'],
+		banlist: ['Uber', 'Unreleased', 'Illegal', 'EX'],
+		mod: 'crossoverchaos',
+	},
+	{
+		name: "[Gen 7] Crossover Chaos Expanded",
+		desc: ["&bullet; <a href=https://www.smogon.com/forums/threads/crossover-chaos-expanded-side-project.3647108/>Crossover Chaos</a>",
+		      ],
+		ruleset: ['Pokemon', 'Sleep Clause Mod', 'Species Clause', 'Moody Clause', 'Evasion Moves Clause', 'Endless Battle Clause', 'HP Percentage Mod', 'Cancel Mod', 'Team Preview', 'Swagger Clause', 'Baton Pass Clause'],
+		banlist: ['Uber', 'Unreleased', 'Illegal', 'V2'],
+		mod: 'crossoverchaos',
+	},
+	{
+		name: "[Gen 7] Crossover Chaos v2 + Expanded Ubers",
+		desc: [
+				"&bullet; <a href=https://www.smogon.com/forums/threads/crossover-chaos-v2.3636780/>Crossover Chaos</a>",
+		      "&bullet; <a href=https://www.smogon.com/forums/threads/crossover-chaos-expanded-side-project.3647108/>Crossover Chaos</a>"],
 		ruleset: ['Pokemon', 'Sleep Clause Mod', 'Species Clause', 'Moody Clause', 'Evasion Moves Clause', 'Endless Battle Clause', 'HP Percentage Mod', 'Cancel Mod', 'Team Preview', 'Swagger Clause', 'Baton Pass Clause'],
 		banlist: [],
 		mod: 'crossoverchaos',
@@ -5062,6 +5099,14 @@ exports.Formats = [
 		mod: 'thefirstnewgen',
 	},
 	{
+		name: "[Gen 7] Roulettemons",
+		desc: ["&bullet; <a href=https://www.smogon.com/forums/threads/roulettemons.3649106/>Roulettemons</a>",
+		      ],
+		ruleset: ['Pokemon', 'Sleep Clause Mod', 'Species Clause', 'Moody Clause', 'Evasion Moves Clause', 'Endless Battle Clause', 'HP Percentage Mod', 'Cancel Mod', 'Team Preview', 'Swagger Clause', 'Baton Pass Clause'],
+		banlist: [],
+		mod: 'roulettemons',
+	},
+	{
 		name: "[Gen 7] Sylvemons",
 		desc: ["&bullet; <a href=https://www.smogon.com/forums/threads/.3612509/>SylveMons</a>",
 				 "&bullet; <a href=https://docs.google.com/spreadsheets/d/18DiYjbZXv1Nm7tU-W0OMgPow0ZO7J2ETJF-hWapwM-o/edit>Sylvemons Archive</a>",
@@ -5107,7 +5152,15 @@ exports.Formats = [
 		onSwitchIn: function (pokemon) {
             this.add('-start', pokemon, 'typechange', pokemon.template.types.join('/'), '[silent]');
         },
+		onBegin: function () {
+			this.zMoveTable.Space = 'Event Horizon'
+			this.zMoveTable.Time = 'Eternal Onslaught'
+			this.zMoveTable.Light = 'Radiance Nova'
+			this.zMoveTable.Heart = 'Compassion Cannon'
+			this.zMoveTable.Food = 'Culinary Cataclysm'
+		},
 		mod: 'ttm',
+		
 	},
 	{
   		name: "[Gen 7] Type Optimisation",
@@ -6476,7 +6529,7 @@ exports.Formats = [
 		ruleset: ['[Gen 7] OU'],
 		banlist: ['Ignore Illegal Abilities', 'Wonder Guard', 'Serene Grace ++ Shaymin', 'Shadow Tag', 'Parental Bond ++ Seismic Toss'],
 		onModifyTemplate: function (template, pokemon) {
-			let newStats = Object.assign({}, template.baseStats), prevo = pokemon.baseTemplate.prevo;
+			let newStats = Object.assign({}, template.baseStats), prevo = this.getTemplate(template.baseSpecies).prevo;
 			while (prevo) {
 				let prevoTemplate = this.getTemplate(prevo);
 				for (let i in newStats.baseStats) {
@@ -6484,9 +6537,9 @@ exports.Formats = [
 				}
 				prevo = prevoTemplate.prevo;
 			}
-			if (!pokemon.baseTemplate.otherFormes) return Object.assign(template, newStats);
-			for (let i = 0; i < pokemon.baseTemplate.otherFormes.length; i++) {
-				let formeTemplate = this.getTemplate(pokemon.baseTemplate.otherFormes[i]);
+			if (!this.getTemplate(template.baseSpecies).otherFormes) return Object.assign(template, newStats);
+			for (let i = 0; i < this.getTemplate(template.baseSpecies).otherFormes.length; i++) {
+				let formeTemplate = this.getTemplate(this.getTemplate(template.baseSpecies).otherFormes[i]);
 				for (let j in newStats) {
 					newStats[j] = Math.max(formeTemplate.baseStats[j], newStats[j]);
 				}
@@ -10372,13 +10425,13 @@ onValidateTeam: function (team) {
 		section: "Fakemon",
 		column: 4,
 	},
-	{
+	/*{
 		name: "[Fakemon] Random Battle",
 		mod: 'fakemon',
 		team: 'randomFotW',
 		ruleset: ['Pokemon', 'Sleep Clause Mod', 'HP Percentage Mod', 'Cancel Mod', 'Freeze Clause Mod'],
 		fotw: "Mechroarmancer",
-	},
+	},*/
 	// Let's Go!
 	///////////////////////////////////////////////////////////////////
 
